@@ -1,0 +1,39 @@
+version: '3'
+
+volumes:
+  mongo-data:
+    driver: local
+networks:
+  flask-network:
+    driver: bridge
+
+services:
+  application:
+    image: fedorovartur/afedorov_application:v1
+    container_name: web
+    environment:
+      - MONGO_USERNAME=root
+      - MONGODB_PASSWORD=example
+      - MONGO_HOST=db
+      - BG_COLOR=teal
+      - FAIL_FLAG=false
+    ports:
+      - 5000:5000
+    depends_on:
+      - db
+    networks:
+      - flask-network
+  
+  db:
+    image: mongo:latest
+    container_name: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    expose:
+      - 1234
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - flask-network
+  

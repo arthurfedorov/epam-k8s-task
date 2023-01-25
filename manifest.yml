@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: application
+  labels:
+    app: application
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: application
+  template:
+    metadata:
+      labels:
+        app: application
+    spec:
+      # initContainers:
+      # - name: init-mongo
+      #   image: busybox
+      #   command: ["/bin/sh", "-c", "until nslookup mongo; do echo waiting for mongo; sleep 2; done"]
+      containers:
+      - name: application
+        image: fedorovartur/afedorov_application:v1
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "0.2"
+          limits:
+            memory: "128Mi"
+            cpu: "0.5"
+        envFrom:
+        - configMapRef:
+            name: application
+        - secretRef:
+            name: application
+      imagePullSecrets:
+      - name: docker-secret

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  labels:
+    mongo: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      mongo: mongo
+  template:
+    metadata:
+      labels:
+        mongo: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo
+        ports:
+          - containerPort: 27017
+        envFrom:
+          - secretRef:
+              name: mongo
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "0.2"
+          limits:
+            memory: "256Mi"
+            cpu: "0.5"
