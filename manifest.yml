@@ -1,10 +1,25 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application
+  namespace: afedorov
+data:
+  FAIL_FLAG: "false"
+  BG_COLOR: "teal"
+  MONGO_HOST: "mongo"
+  MONGO_PORT: "27017"
+--- 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: application
   labels:
     app: application
+  namespace: afedorov
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
@@ -14,15 +29,27 @@ spec:
       labels:
         app: application
     spec:
-      # initContainers:
-      # - name: init-mongo
-      #   image: busybox
-      #   command: ["/bin/sh", "-c", "until nslookup mongo; do echo waiting for mongo; sleep 2; done"]
+      initContainers:
+      - name: init-mongo
+        image: busybox
+        command: ["/bin/sh", "-c", "until nslookup mongo; do echo waiting for mongo; sleep 2; done"]
       containers:
       - name: application
         image: fedorovartur/afedorov_application:v1
         ports:
         - containerPort: 5000
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
         resources:
           requests:
             memory: "64Mi"
@@ -37,3 +64,83 @@ spec:
             name: application
       imagePullSecrets:
       - name: docker-secret
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  labels:
+    mongo: mongo
+  namespace: afedorov
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      mongo: mongo
+  template:
+    metadata:
+      labels:
+        mongo: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo
+        ports:
+          - containerPort: 27017
+        envFrom:
+          - secretRef:
+              name: mongo
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "0.2"
+          limits:
+            memory: "256Mi"
+            cpu: "0.5"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: application
+  namespace: afedorov
+spec:
+  ports:
+  - port: 80
+    targetPort: 5000
+  selector:
+    app: application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: afedorov
+spec:
+  selector:
+    mongo: mongo
+  ports:
+  - port: 27017
+    protocol: TCP
+    targetPort: 27017
+  selector:
+    mongo: mongo
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: afedorov.application.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: application
+                port:
+                  number: 80
+
