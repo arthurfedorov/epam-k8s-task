@@ -32,7 +32,7 @@ spec:
       initContainers:
       - name: init-mongo
         image: busybox
-        command: ["/bin/sh", "-c", "until nslookup mongo; do echo waiting for mongo; sleep 2; done"]
+        command: ["/bin/sh", "-c", "until nslookup mongo.afedorov.svc.cluster.local; do echo waiting for mongo; sleep 2; done"]
       containers:
       - name: application
         image: fedorovartur/afedorov_application:v1
@@ -40,16 +40,24 @@ spec:
         - containerPort: 5000
         livenessProbe:
           httpGet:
+            scheme: HTTP
             path: /healthz
             port: 5000
-          initialDelaySeconds: 5
-          periodSeconds: 10
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          successThreshold: 1
+          failureThreshold: 5
+          timeoutSeconds: 10
         readinessProbe:
           httpGet:
-            path: /healthz
+            scheme: HTTP
+            path: /healthx
             port: 5000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 20
           periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 10
+          timeoutSeconds: 10
         resources:
           requests:
             memory: "64Mi"
